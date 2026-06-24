@@ -469,26 +469,67 @@ button {
 .stats-container {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 34px;
+  gap: 28px;
   overflow: hidden;
+  width: 100%;
 }
 
 .partner-logo {
-  color: #67636d;
-  font-size: 1.28rem;
-  font-weight: 900;
-  font-family: 'Poppins', 'Inter', sans-serif;
+  color: #7a7a7a;
+  font-size: 1rem;
+  font-weight: 400;
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
-.partner-logo--light   { color: #797480; font-weight: 600; }
-.partner-logo--spotify { color: #5d5962; font-size: 0.95rem; font-weight: 700; }
+.partner-logo--bold {
+  color: #2d2d2d;
+  font-weight: 800;
+  font-style: italic;
+  font-size: 1.1rem;
+  letter-spacing: -0.04em;
+}
+
+.partner-logo--light {
+  color: #6b6b6b;
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+.partner-logo--spotify {
+  color: #6b6b6b;
+  font-weight: 400;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.partner-logo--spotify svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.partner-logo--icon-only {
+  color: #aaa;
+  line-height: 0;
+}
+
+.partner-logo--icon-only svg {
+  width: 22px;
+  height: 22px;
+}
 
 /* --------------------------------------------------------------------------
    7. Proof Metrics
