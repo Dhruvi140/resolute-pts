@@ -461,9 +461,15 @@ button {
 
 .stats-banner {
   background: var(--white);
-  padding: 92px 0 64px;
+  padding: 92px 0 30px;
   position: relative;
   z-index: 1;
+  overflow: hidden;
+}
+
+.stats-banner marquee {
+  display: flex;
+  align-items: center;
 }
 
 .stats-container {
@@ -490,6 +496,7 @@ button {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  margin-right: 60px;
 }
 
 .partner-logo--bold {
