@@ -35,60 +35,51 @@
     }
 
     /* ── Counter animation ──
-       Uses requestAnimationFrame with a fast-scramble then settle effect.
-       Numbers spin through random digits before landing on the real value.
+       Odometer-style: numbers tick up with a strong ease-out curve.
+       Fast at the start, dramatically slows down as it locks onto the final value.
+       Each frame only increments by a small step so individual digits visibly roll.
     ── */
     function animateCounter(el, target, duration, prefix, suffix, decimals) {
-        var startTime  = null;
-        var scrambleMs = duration * 0.6;   // first 60% of time: scramble
-        var settleMs   = duration * 0.4;   // last 40%: count up smoothly
 
-        function randomInt(max) {
-            return Math.floor(Math.random() * max);
+        function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
         }
 
         function formatNum(val, dec) {
-            return dec > 0
-                ? parseFloat(val).toFixed(dec)
-                : Math.floor(val).toLocaleString('en-US');
+            if (dec > 0) return parseFloat(val).toFixed(dec);
+            return Math.floor(val).toLocaleString('en-US');
         }
+
+        var startTime = null;
 
         function step(timestamp) {
             if (!startTime) startTime = timestamp;
-            var elapsed = timestamp - startTime;
+            var elapsed  = timestamp - startTime;
+            var progress = Math.min(elapsed / duration, 1);
+            var eased    = easeOutCubic(progress);
+            var current  = eased * target;
 
-            if (elapsed < scrambleMs) {
-                // Scramble phase: show random numbers
-                var scrambled = randomInt(Math.ceil(target));
-                el.textContent = prefix + formatNum(scrambled, decimals) + suffix;
-                el.style.opacity = '0.7';
+            el.textContent = prefix + formatNum(current, decimals) + suffix;
+
+            if (progress < 1) {
                 requestAnimationFrame(step);
-
-            } else if (elapsed < duration) {
-                // Settle phase: ease-out count up to target
-                var progress = (elapsed - scrambleMs) / settleMs;
-                var eased    = 1 - Math.pow(1 - progress, 2); // ease-out quad
-                var current  = eased * target;
-                el.textContent = prefix + formatNum(current, decimals) + suffix;
-                el.style.opacity = '0.7' + String(0.3 * progress).slice(1); // fade to 1
-                requestAnimationFrame(step);
-
             } else {
-                // Final — lock to exact value
                 el.textContent = prefix + formatNum(target, decimals) + suffix;
-                el.style.opacity = '1';
             }
         }
 
-        el.style.opacity = '0.5';
-        requestAnimationFrame(step);
+        /* Brief pause then fire — gives the user a moment to notice before it starts */
+        setTimeout(function () {
+            el.textContent = prefix + formatNum(0, decimals) + suffix;
+            requestAnimationFrame(step);
+        }, 200);
     }
 
     var counters = [
-        { selector: '.metric-card:nth-child(1) strong', target: 86,          duration: 2000, prefix: '',  suffix: '%',  decimals: 0 },
-        { selector: '.metric-card:nth-child(2) strong', target: 1102,        duration: 2200, prefix: '$', suffix: '',   decimals: 0 },
-        { selector: '.metric-card:nth-child(3) strong', target: 4.7,         duration: 1800, prefix: '',  suffix: ' ★', decimals: 1 },
-        { selector: '.assessment-total__number',        target: 12365478962, duration: 2800, prefix: '$', suffix: '',   decimals: 0 }
+        { selector: '.metric-card:nth-child(1) strong', target: 86,          duration: 6200, prefix: '',  suffix: '%',  decimals: 0 },
+        { selector: '.metric-card:nth-child(2) strong', target: 1102,        duration: 8200, prefix: '$', suffix: '',   decimals: 0 },
+        { selector: '.metric-card:nth-child(3) strong', target: 4.7,         duration: 6200, prefix: '',  suffix: ' ★', decimals: 1 },
+        { selector: '.assessment-total__number',        target: 12365478962, duration: 12500, prefix: '$', suffix: '',   decimals: 0 }
     ];
 
     if ('IntersectionObserver' in window) {
@@ -104,74 +95,164 @@
                         animateCounter(el, config.target, config.duration, config.prefix, config.suffix, config.decimals);
                     }
                 });
-            }, { threshold: 0.5 });
+            }, { threshold: 0.4 });
             obs.observe(el);
         });
     }
 
     /* ── Testimonials carousel ── */
-    var tTrack = document.querySelector('.testimonials-new__track');
-    var tCards = tTrack ? Array.from(tTrack.querySelectorAll('.tcard')) : [];
-    var tDots  = Array.from(document.querySelectorAll('.tdot'));
-    var tPrev  = document.querySelector('.tcard-arrow--prev');
-    var tNext  = document.querySelector('.tcard-arrow--next');
-    var tIndex = 0;
+    var tWrapper  = document.querySelector('.testimonials-new__track-wrapper');
+    var tTrack    = document.querySelector('.testimonials-new__track');
+    var tDotsWrap = document.querySelector('.testimonials-new__dots');
+    var tCards    = tTrack ? Array.from(tTrack.querySelectorAll('.tcard')) : [];
+    var tPrev     = document.querySelector('.tcard-arrow--prev');
+    var tNext     = document.querySelector('.tcard-arrow--next');
+    var tIndex    = 0;
+    var tDots     = [];
+    var GAP       = 20; // must match CSS gap
 
     function getVisibleCount() {
         return window.innerWidth <= 560 ? 1 : window.innerWidth <= 860 ? 2 : 3;
     }
 
+    function buildDots() {
+        if (!tDotsWrap) return;
+        var visible = getVisibleCount();
+        var count   = tCards.length - visible + 1;
+        tDotsWrap.innerHTML = '';
+        tDots = [];
+        for (var i = 0; i < count; i++) {
+            var dot = document.createElement('span');
+            dot.className = 'tdot' + (i === tIndex ? ' tdot--active' : '');
+            dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+            (function(idx) {
+                dot.addEventListener('click', function () { showTestimonial(idx); });
+            })(i);
+            tDotsWrap.appendChild(dot);
+            tDots.push(dot);
+        }
+    }
+
+    function setCardWidths() {
+        if (!tWrapper || !tCards.length) return;
+        var visible   = getVisibleCount();
+        var totalGap  = GAP * (visible - 1);
+        var cardWidth = (tWrapper.offsetWidth - totalGap) / visible;
+        tCards.forEach(function (card) {
+            card.style.width = cardWidth + 'px';
+        });
+    }
+
     function showTestimonial(index) {
+        if (!tTrack || !tCards.length) return;
         var visible = getVisibleCount();
         var max     = tCards.length - visible;
         tIndex      = Math.max(0, Math.min(index, max));
 
-        tCards.forEach(function (card, i) {
-            card.style.display = (i >= tIndex && i < tIndex + visible) ? 'flex' : 'none';
-        });
+        var cardWidth   = tCards[0].offsetWidth;
+        var slideAmount = tIndex * (cardWidth + GAP);
+        tTrack.style.transform = 'translateX(-' + slideAmount + 'px)';
 
         tDots.forEach(function (dot, i) {
             dot.classList.toggle('tdot--active', i === tIndex);
         });
+
+        // Update arrow opacity
+        if (tPrev) tPrev.style.opacity = tIndex === 0 ? '0.45' : '1';
+        if (tNext) tNext.style.opacity = tIndex >= max ? '0.45' : '1';
     }
 
     if (tCards.length) {
-        showTestimonial(0);
+        requestAnimationFrame(function () {
+            setCardWidths();
+            buildDots();
+            showTestimonial(0);
+        });
         if (tNext) tNext.addEventListener('click', function () { showTestimonial(tIndex + 1); });
         if (tPrev) tPrev.addEventListener('click', function () { showTestimonial(tIndex - 1); });
-        tDots.forEach(function (dot, i) {
-            dot.addEventListener('click', function () { showTestimonial(i); });
+        window.addEventListener('resize', function () {
+            setCardWidths();
+            buildDots();
+            showTestimonial(tIndex);
         });
-        window.addEventListener('resize', function () { showTestimonial(tIndex); });
     }
 
     /* ── Team carousel ── */
-    var teamGrid  = document.querySelector('.team-grid');
-    var teamCards = teamGrid ? Array.from(teamGrid.querySelectorAll('.team-card')) : [];
-    var teamPrev  = document.querySelector('.team-arrow--prev');
-    var teamNext  = document.querySelector('.team-arrow--next');
-    var teamIndex = 0;
+    var teamWrapper = document.querySelector('.team-track-wrapper');
+    var teamGrid    = document.querySelector('.team-grid');
+    var teamCards   = teamGrid ? Array.from(teamGrid.querySelectorAll('.team-card')) : [];
+    var teamPrev    = document.querySelector('.team-arrow--prev');
+    var teamNext    = document.querySelector('.team-arrow--next');
+    var teamIndex   = 0;
+    var TEAM_GAP    = 14; // must match CSS gap
 
     function getTeamVisible() {
         return window.innerWidth <= 480 ? 1 : window.innerWidth <= 860 ? 2 : 3;
     }
 
-    function showTeam(index) {
-        var visible = getTeamVisible();
-        var max     = teamCards.length - visible;
-        teamIndex   = Math.max(0, Math.min(index, max));
-
-        teamCards.forEach(function (card, i) {
-            card.style.display = (i >= teamIndex && i < teamIndex + visible) ? 'block' : 'none';
+    function setTeamCardWidths() {
+        if (!teamWrapper || !teamCards.length) return;
+        var visible   = getTeamVisible();
+        var totalGap  = TEAM_GAP * (visible - 1);
+        var cardWidth = (teamWrapper.offsetWidth - totalGap) / visible;
+        teamCards.forEach(function (card) {
+            card.style.width = cardWidth + 'px';
         });
     }
 
+    function showTeam(index) {
+        if (!teamGrid || !teamCards.length) return;
+        var visible  = getTeamVisible();
+        var max      = teamCards.length - visible;
+        teamIndex    = Math.max(0, Math.min(index, max));
+
+        var cardWidth   = teamCards[0].offsetWidth;
+        var slideAmount = teamIndex * (cardWidth + TEAM_GAP);
+        teamGrid.style.transform = 'translateX(-' + slideAmount + 'px)';
+
+        // Update arrow opacity
+        if (teamPrev) teamPrev.style.opacity = teamIndex === 0 ? '0.45' : '1';
+        if (teamNext) teamNext.style.opacity = teamIndex >= max ? '0.45' : '1';
+    }
+
     if (teamCards.length) {
-        showTeam(0);
+        requestAnimationFrame(function () {
+            setTeamCardWidths();
+            showTeam(0);
+        });
         if (teamNext) teamNext.addEventListener('click', function () { showTeam(teamIndex + 1); });
         if (teamPrev) teamPrev.addEventListener('click', function () { showTeam(teamIndex - 1); });
-        window.addEventListener('resize', function () { showTeam(teamIndex); });
+        window.addEventListener('resize', function () {
+            setTeamCardWidths();
+            showTeam(teamIndex);
+        });
     }
+
+    /* ── FAQ accordion ── */
+    var faqItems = Array.from(document.querySelectorAll('.faq-item'));
+
+    faqItems.forEach(function (item) {
+        var btn    = item.querySelector('.faq-banner__item');
+        var answer = item.querySelector('.faq-answer');
+        if (!btn || !answer) return;
+
+        btn.addEventListener('click', function () {
+            var isOpen = item.classList.contains('is-open');
+
+            // Close all others
+            faqItems.forEach(function (other) {
+                other.classList.remove('is-open');
+                var otherBtn = other.querySelector('.faq-banner__item');
+                if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
+            });
+
+            // Toggle clicked item
+            if (!isOpen) {
+                item.classList.add('is-open');
+                btn.setAttribute('aria-expanded', 'true');
+            }
+        });
+    });
 
     /* ── Scroll animation observer ── */
     var animElements = document.querySelectorAll(
