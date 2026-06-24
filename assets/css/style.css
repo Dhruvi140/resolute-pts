@@ -500,23 +500,23 @@ button {
 }
 
 .partner-logo--bold {
-  color: #2d2d2d;
-  font-weight: 800;
-  font-style: italic;
-  font-size: 1.1rem;
-  letter-spacing: -0.04em;
+  color: #555;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
 }
 
 .partner-logo--light {
-  color: #6b6b6b;
+  color: #555;
   font-weight: 400;
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 
 .partner-logo--spotify {
-  color: #6b6b6b;
+  color: #555;
   font-weight: 400;
-  font-size: 1rem;
+  font-size: 1.05rem;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -527,7 +527,6 @@ button {
   height: 20px;
   flex-shrink: 0;
 }
-
 .partner-logo--icon-only {
   color: #aaa;
   line-height: 0;
