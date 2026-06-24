@@ -35,69 +35,76 @@
     }
 
     /* ── Counter animation ──
-       Counts up from 0 to target when element scrolls into view.
-       Supports: plain numbers, decimals, $ prefix, % suffix, ★ suffix, comma formatting
+       Uses requestAnimationFrame with a fast-scramble then settle effect.
+       Numbers spin through random digits before landing on the real value.
     ── */
     function animateCounter(el, target, duration, prefix, suffix, decimals) {
-        var start     = 0;
-        var startTime = null;
+        var startTime  = null;
+        var scrambleMs = duration * 0.6;   // first 60% of time: scramble
+        var settleMs   = duration * 0.4;   // last 40%: count up smoothly
 
-        function easeOut(t) {
-            return 1 - Math.pow(1 - t, 3); // cubic ease-out — fast start, slow stop
+        function randomInt(max) {
+            return Math.floor(Math.random() * max);
+        }
+
+        function formatNum(val, dec) {
+            return dec > 0
+                ? parseFloat(val).toFixed(dec)
+                : Math.floor(val).toLocaleString('en-US');
         }
 
         function step(timestamp) {
             if (!startTime) startTime = timestamp;
-            var elapsed  = timestamp - startTime;
-            var progress = Math.min(elapsed / duration, 1);
-            var current  = easeOut(progress) * target;
+            var elapsed = timestamp - startTime;
 
-            // Format with commas and optional decimals
-            var formatted = decimals > 0
-                ? current.toFixed(decimals)
-                : Math.floor(current).toLocaleString('en-US');
-
-            el.textContent = prefix + formatted + suffix;
-
-            if (progress < 1) {
+            if (elapsed < scrambleMs) {
+                // Scramble phase: show random numbers
+                var scrambled = randomInt(Math.ceil(target));
+                el.textContent = prefix + formatNum(scrambled, decimals) + suffix;
+                el.style.opacity = '0.7';
                 requestAnimationFrame(step);
+
+            } else if (elapsed < duration) {
+                // Settle phase: ease-out count up to target
+                var progress = (elapsed - scrambleMs) / settleMs;
+                var eased    = 1 - Math.pow(1 - progress, 2); // ease-out quad
+                var current  = eased * target;
+                el.textContent = prefix + formatNum(current, decimals) + suffix;
+                el.style.opacity = '0.7' + String(0.3 * progress).slice(1); // fade to 1
+                requestAnimationFrame(step);
+
             } else {
-                // Ensure exact final value
-                var final = decimals > 0
-                    ? target.toFixed(decimals)
-                    : target.toLocaleString('en-US');
-                el.textContent = prefix + final + suffix;
+                // Final — lock to exact value
+                el.textContent = prefix + formatNum(target, decimals) + suffix;
+                el.style.opacity = '1';
             }
         }
 
+        el.style.opacity = '0.5';
         requestAnimationFrame(step);
     }
 
-    // Counter config: selector → { target, duration ms, prefix, suffix, decimals }
     var counters = [
-        { selector: '.metric-card:nth-child(1) strong', target: 86,            duration: 1800, prefix: '',  suffix: '%',  decimals: 0 },
-        { selector: '.metric-card:nth-child(2) strong', target: 1102,          duration: 2000, prefix: '$', suffix: '',   decimals: 0 },
-        { selector: '.metric-card:nth-child(3) strong', target: 4.7,           duration: 1600, prefix: '',  suffix: ' ★', decimals: 1 },
-        { selector: '.assessment-total__number',        target: 12365478962,   duration: 2500, prefix: '$', suffix: '',   decimals: 0 }
+        { selector: '.metric-card:nth-child(1) strong', target: 86,          duration: 2000, prefix: '',  suffix: '%',  decimals: 0 },
+        { selector: '.metric-card:nth-child(2) strong', target: 1102,        duration: 2200, prefix: '$', suffix: '',   decimals: 0 },
+        { selector: '.metric-card:nth-child(3) strong', target: 4.7,         duration: 1800, prefix: '',  suffix: ' ★', decimals: 1 },
+        { selector: '.assessment-total__number',        target: 12365478962, duration: 2800, prefix: '$', suffix: '',   decimals: 0 }
     ];
 
     if ('IntersectionObserver' in window) {
         counters.forEach(function (config) {
             var el = document.querySelector(config.selector);
             if (!el) return;
-
             var triggered = false;
-
             var obs = new IntersectionObserver(function (entries) {
                 entries.forEach(function (entry) {
                     if (entry.isIntersecting && !triggered) {
                         triggered = true;
+                        obs.unobserve(el);
                         animateCounter(el, config.target, config.duration, config.prefix, config.suffix, config.decimals);
-                        obs.unobserve(el); // run once, then stop
                     }
                 });
-            }, { threshold: 0.4 });
-
+            }, { threshold: 0.5 });
             obs.observe(el);
         });
     }

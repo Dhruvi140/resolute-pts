@@ -609,6 +609,11 @@ button {
   font-weight: 800;
   line-height: 1;
   margin-bottom: 7px;
+  transition: opacity 0.1s ease;
+}
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 7px;
 }
 
 .metric-card span:last-child {
